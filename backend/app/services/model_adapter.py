@@ -6,11 +6,23 @@ from app.schemas.investigation import InvestigationTask
 class ModelAdapter(ABC):
 
     @abstractmethod
-    def predict(self, task: InvestigationTask) -> dict:
+    def predict(
+        self,
+        task: InvestigationTask,
+        image_paths: list[str],
+    ) -> dict:
         """
-        Run the specialist model for the given investigation task.
+        Run the specialist remote-sensing model.
 
-        The ML developer will implement this method
-        for the real remote-sensing model.
+        Parameters:
+            task:
+                Investigation task selected by SatQuery.
+
+            image_paths:
+                Paths to the input GeoTIFF images.
+
+        Returns:
+            A dictionary containing the model output,
+            confidence, and evidence.
         """
         pass

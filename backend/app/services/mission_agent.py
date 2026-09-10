@@ -27,31 +27,65 @@ def build_investigation_plan(
 ):
     query_lower = query.lower()
 
-    # --------------------------------------------------
-    # 1. True temporal/change analysis
-    # --------------------------------------------------
+    # -------------------------------------------------
+    # Detect investigation capabilities
+    # -------------------------------------------------
 
-    temporal_keywords = [
-    "before and after",
-    "between the two images",
-    "compare the two images",
-    "compare these two images",
-    "compare these images",
-    "temporal change",
-    "over time",
-    "changed between",
-    "change between",
-    "new construction between",
-    ]
-
-    if (
+    is_temporal = (
         len(image_ids) == 2
         and any(
             keyword in query_lower
-            for keyword in temporal_keywords
+            for keyword in [
+                "before and after",
+                "between the two images",
+                "compare the two images",
+                "compare these two images",
+                "compare these images",
+                "temporal change",
+                "over time",
+                "changed between",
+                "change between",
+                "new construction between",
+                "new construction",
+            ]
         )
-    ):
-        return [
+    )
+
+    is_multimodal = (
+        len(image_ids) == 2
+        and any(
+            keyword in query_lower
+            for keyword in [
+                "sar",
+                "radar",
+                "optical and sar",
+                "optical + sar",
+                "multimodal",
+                "cross-modal",
+            ]
+        )
+    )
+
+    is_grounding = any(
+        keyword in query_lower
+        for keyword in [
+            "where",
+            "locate",
+            "find",
+            "region",
+            "area",
+            "location",
+            "identify where",
+        ]
+    )
+
+    # -------------------------------------------------
+    # Multi-step temporal investigation
+    # -------------------------------------------------
+
+    if is_temporal:
+
+        tasks = [
             create_task(
                 task_type="change_analysis",
                 image_ids=image_ids,
@@ -59,27 +93,31 @@ def build_investigation_plan(
             )
         ]
 
-    # --------------------------------------------------
-    # 2. Optical + SAR analysis
-    # --------------------------------------------------
+        # If the user asks where the change occurred,
+        # follow change detection with grounding.
+        if is_grounding:
 
-    multimodal_keywords = [
-        "sar",
-        "radar",
-        "optical and sar",
-        "optical + sar",
-        "multimodal",
-        "cross-modal",
-    ]
+            tasks.append(
+                create_task(
+                    task_type="grounding",
+                    image_ids=image_ids,
+                    query=query,
+                    parameters={
+                        "depends_on": tasks[0].task_id,
+                        "purpose": "locate_detected_change",
+                    },
+                )
+            )
 
-    if (
-        len(image_ids) == 2
-        and any(
-            keyword in query_lower
-            for keyword in multimodal_keywords
-        )
-    ):
-        return [
+        return tasks
+
+    # -------------------------------------------------
+    # Multi-step optical + SAR investigation
+    # -------------------------------------------------
+
+    if is_multimodal:
+
+        tasks = [
             create_task(
                 task_type="optical_sar_fusion",
                 image_ids=image_ids,
@@ -87,24 +125,30 @@ def build_investigation_plan(
             )
         ]
 
-    # --------------------------------------------------
-    # 3. Single-image spatial/region request
-    # --------------------------------------------------
+        # If the user asks where the relevant feature
+        # is located, add a grounding step.
+        if is_grounding:
 
-    grounding_keywords = [
-        "where",
-        "locate",
-        "find",
-        "region",
-        "area",
-        "location",
-        "identify where",
-    ]
+            tasks.append(
+                create_task(
+                    task_type="grounding",
+                    image_ids=image_ids,
+                    query=query,
+                    parameters={
+                        "depends_on": tasks[0].task_id,
+                        "purpose": "locate_cross_modal_feature",
+                    },
+                )
+            )
 
-    if any(
-        keyword in query_lower
-        for keyword in grounding_keywords
-    ):
+        return tasks
+
+    # -------------------------------------------------
+    # Single-image grounding
+    # -------------------------------------------------
+
+    if is_grounding:
+
         return [
             create_task(
                 task_type="grounding",
@@ -113,9 +157,9 @@ def build_investigation_plan(
             )
         ]
 
-    # --------------------------------------------------
-    # 4. Default single-image VQA
-    # --------------------------------------------------
+    # -------------------------------------------------
+    # Default: single-image VQA
+    # -------------------------------------------------
 
     return [
         create_task(

@@ -1,0 +1,324 @@
+{
+  "report_version": "1.0",
+  "investigation_id": "inv_61362834f29f",
+  "generated_at": "2026-09-10T18:29:01.209963+00:00",
+  "query": "Compare these two images for new construction and tell me where it occurred.",
+  "tasks": [
+    {
+      "task_id": "task_ef6ddf7a",
+      "task_type": "change_analysis",
+      "image_ids": [
+        "img_before",
+        "img_after"
+      ],
+      "query": "Compare these two images for new construction and tell me where it occurred.",
+      "parameters": {}
+    },
+    {
+      "task_id": "task_433ce108",
+      "task_type": "grounding",
+      "image_ids": [
+        "img_before",
+        "img_after"
+      ],
+      "query": "Compare these two images for new construction and tell me where it occurred.",
+      "parameters": {
+        "depends_on": "task_ef6ddf7a",
+        "purpose": "locate_detected_change",
+        "_execution_context": {
+          "previous_results": {
+            "task_ef6ddf7a": {
+              "success": true,
+              "task_id": "task_ef6ddf7a",
+              "task_type": "change_analysis",
+              "model": {
+                "name": "SatQuery Change Model",
+                "version": "0.1.0"
+              },
+              "result": {
+                "change_detected": true,
+                "change_type": "land-cover change",
+                "confidence": 0.84,
+                "evidence": [
+                  {
+                    "type": "temporal",
+                    "description": "Difference detected between the two temporal images."
+                  }
+                ]
+              },
+              "error": null
+            }
+          }
+        }
+      }
+    }
+  ],
+  "model_results": [
+    {
+      "success": true,
+      "task_id": "task_ef6ddf7a",
+      "task_type": "change_analysis",
+      "model_name": "SatQuery Change Model",
+      "model_version": "0.1.0",
+      "result": {
+        "change_detected": true,
+        "change_type": "land-cover change",
+        "confidence": 0.84,
+        "evidence": [
+          {
+            "type": "temporal",
+            "description": "Difference detected between the two temporal images."
+          }
+        ]
+      },
+      "confidence": 0.84,
+      "evidence": [
+        {
+          "type": "temporal",
+          "description": "Difference detected between the two temporal images.",
+          "source": "SatQuery Change Model",
+          "metadata": {
+            "task_id": "task_ef6ddf7a",
+            "task_type": "change_analysis",
+            "model_version": "0.1.0"
+          }
+        }
+      ],
+      "error": null
+    },
+    {
+      "success": true,
+      "task_id": "task_433ce108",
+      "task_type": "grounding",
+      "model_name": "SatQuery Grounding",
+      "model_version": "0.1.0",
+      "result": {
+        "regions": [],
+        "confidence": 0.76,
+        "evidence": [
+          {
+            "type": "spatial",
+            "description": "Candidate region identified from the query."
+          }
+        ]
+      },
+      "confidence": 0.76,
+      "evidence": [
+        {
+          "type": "spatial",
+          "description": "Candidate region identified from the query.",
+          "source": "SatQuery Grounding",
+          "metadata": {
+            "task_id": "task_433ce108",
+            "task_type": "grounding",
+            "model_version": "0.1.0"
+          }
+        }
+      ],
+      "error": null
+    }
+  ],
+  "evidence": [
+    {
+      "type": "temporal",
+      "description": "Difference detected between the two temporal images.",
+      "source": "SatQuery Change Model",
+      "metadata": {
+        "task_id": "task_ef6ddf7a",
+        "task_type": "change_analysis",
+        "model_version": "0.1.0"
+      }
+    },
+    {
+      "type": "spatial",
+      "description": "Candidate region identified from the query.",
+      "source": "SatQuery Grounding",
+      "metadata": {
+        "task_id": "task_433ce108",
+        "task_type": "grounding",
+        "model_version": "0.1.0"
+      }
+    }
+  ],
+  "confidence": [
+    {
+      "task_id": "task_ef6ddf7a",
+      "task_type": "change_analysis",
+      "model": {
+        "name": "SatQuery Change Model",
+        "version": "0.1.0"
+      },
+      "confidence": 0.936,
+      "label": "high"
+    },
+    {
+      "task_id": "task_433ce108",
+      "task_type": "grounding",
+      "model": {
+        "name": "SatQuery Grounding",
+        "version": "0.1.0"
+      },
+      "confidence": 0.904,
+      "label": "high"
+    }
+  ],
+  "conflicts": [],
+  "execution_trace": [
+    {
+      "timestamp": "2026-09-10T18:29:01.206014+00:00",
+      "step": "mission_received",
+      "status": "completed",
+      "details": {
+        "task_count": 2
+      }
+    },
+    {
+      "timestamp": "2026-09-10T18:29:01.206024+00:00",
+      "step": "plan_created",
+      "status": "completed",
+      "details": {
+        "tasks": [
+          {
+            "task_id": "task_ef6ddf7a",
+            "task_type": "change_analysis",
+            "image_ids": [
+              "img_before",
+              "img_after"
+            ],
+            "parameters": {}
+          },
+          {
+            "task_id": "task_433ce108",
+            "task_type": "grounding",
+            "image_ids": [
+              "img_before",
+              "img_after"
+            ],
+            "parameters": {
+              "depends_on": "task_ef6ddf7a",
+              "purpose": "locate_detected_change",
+              "_execution_context": {
+                "previous_results": {
+                  "task_ef6ddf7a": {
+                    "success": true,
+                    "task_id": "task_ef6ddf7a",
+                    "task_type": "change_analysis",
+                    "model": {
+                      "name": "SatQuery Change Model",
+                      "version": "0.1.0"
+                    },
+                    "result": {
+                      "change_detected": true,
+                      "change_type": "land-cover change",
+                      "confidence": 0.84,
+                      "evidence": [
+                        {
+                          "type": "temporal",
+                          "description": "Difference detected between the two temporal images."
+                        }
+                      ]
+                    },
+                    "error": null
+                  }
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "timestamp": "2026-09-10T18:29:01.206029+00:00",
+      "step": "plan_validation",
+      "status": "completed",
+      "details": {
+        "valid": true
+      }
+    },
+    {
+      "timestamp": "2026-09-10T18:29:01.206032+00:00",
+      "step": "raster_compatibility",
+      "status": "completed",
+      "details": {
+        "compatible": true,
+        "reasons": []
+      }
+    },
+    {
+      "timestamp": "2026-09-10T18:29:01.206036+00:00",
+      "step": "dependency_resolution",
+      "status": "completed",
+      "details": {
+        "dependency_count": 1,
+        "dependencies": [
+          {
+            "task_id": "task_433ce108",
+            "depends_on": "task_ef6ddf7a",
+            "purpose": "locate_detected_change"
+          }
+        ]
+      }
+    },
+    {
+      "timestamp": "2026-09-10T18:29:01.206040+00:00",
+      "step": "model_execution",
+      "status": "completed",
+      "details": {
+        "task_id": "task_ef6ddf7a",
+        "task_type": "change_analysis",
+        "model": {
+          "name": "SatQuery Change Model",
+          "version": "0.1.0"
+        },
+        "depends_on": null,
+        "error": null
+      }
+    },
+    {
+      "timestamp": "2026-09-10T18:29:01.206045+00:00",
+      "step": "model_execution",
+      "status": "completed",
+      "details": {
+        "task_id": "task_433ce108",
+        "task_type": "grounding",
+        "model": {
+          "name": "SatQuery Grounding",
+          "version": "0.1.0"
+        },
+        "depends_on": "task_ef6ddf7a",
+        "error": null
+      }
+    },
+    {
+      "timestamp": "2026-09-10T18:29:01.206049+00:00",
+      "step": "evidence_collection",
+      "status": "completed",
+      "details": {
+        "successful_models": 2
+      }
+    },
+    {
+      "timestamp": "2026-09-10T18:29:01.206051+00:00",
+      "step": "conflict_detection",
+      "status": "completed",
+      "details": {
+        "conflict_count": 0,
+        "conflicts": []
+      }
+    },
+    {
+      "timestamp": "2026-09-10T18:29:01.206053+00:00",
+      "step": "confidence_calculation",
+      "status": "completed",
+      "details": {
+        "models_evaluated": 2
+      }
+    },
+    {
+      "timestamp": "2026-09-10T18:29:01.206055+00:00",
+      "step": "investigation_completed",
+      "status": "completed",
+      "details": {}
+    }
+  ]
+}
