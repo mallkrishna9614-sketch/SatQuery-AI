@@ -40,8 +40,27 @@ def build_model_results(results: list[dict]) -> list[ModelResult]:
 
     for result in results:
         model_data = result.get("model") or {}
-
         raw_result = result.get("result") or {}
+
+        standardized_evidence = []
+
+        if result.get("success"):
+            for item in raw_result.get("evidence", []):
+                try:
+                    standardized_evidence.append(
+                        EvidenceItem(
+                            type=item["type"],
+                            description=item["description"],
+                            source=model_data.get("name"),
+                            metadata={
+                                "task_id": result["task_id"],
+                                "task_type": result["task_type"],
+                                "model_version": model_data.get("version"),
+                            },
+                        )
+                    )
+                except (KeyError, TypeError, ValueError):
+                    continue
 
         model_results.append(
             ModelResult(
@@ -54,7 +73,7 @@ def build_model_results(results: list[dict]) -> list[ModelResult]:
                 confidence=raw_result.get("confidence")
                 if result.get("success")
                 else None,
-                evidence=[],
+                evidence=standardized_evidence,
                 error=result.get("error"),
             )
         )

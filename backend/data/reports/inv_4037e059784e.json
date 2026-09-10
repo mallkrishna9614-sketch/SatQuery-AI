@@ -1,0 +1,145 @@
+{
+  "report_version": "1.0",
+  "investigation_id": "inv_4037e059784e",
+  "generated_at": "2026-09-10T17:20:10.007628+00:00",
+  "query": "What is visible in this image?",
+  "tasks": [
+    {
+      "task_id": "task_ff777c1f",
+      "task_type": "vqa",
+      "image_ids": [
+        "img_79fb0cd1f4a0"
+      ],
+      "query": "What is visible in this image?",
+      "parameters": {}
+    }
+  ],
+  "model_results": [
+    {
+      "success": true,
+      "task_id": "task_ff777c1f",
+      "task_type": "vqa",
+      "model_name": "SatQuery RS-VLM",
+      "model_version": "0.1.0",
+      "result": {
+        "answer": "A satellite scene containing land-cover features.",
+        "confidence": 0.82,
+        "evidence": [
+          {
+            "type": "visual",
+            "description": "Relevant visual features detected in the input image."
+          }
+        ]
+      },
+      "confidence": 0.82,
+      "evidence": [
+        {
+          "type": "visual",
+          "description": "Relevant visual features detected in the input image.",
+          "source": "SatQuery RS-VLM",
+          "metadata": {
+            "task_id": "task_ff777c1f",
+            "task_type": "vqa",
+            "model_version": "0.1.0"
+          }
+        }
+      ],
+      "error": null
+    }
+  ],
+  "evidence": [
+    {
+      "type": "visual",
+      "description": "Relevant visual features detected in the input image.",
+      "source": "SatQuery RS-VLM",
+      "metadata": {
+        "task_id": "task_ff777c1f",
+        "task_type": "vqa",
+        "model_version": "0.1.0"
+      }
+    }
+  ],
+  "confidence": [
+    {
+      "task_id": "task_ff777c1f",
+      "task_type": "vqa",
+      "model": {
+        "name": "SatQuery RS-VLM",
+        "version": "0.1.0"
+      },
+      "confidence": 0.928,
+      "label": "high"
+    }
+  ],
+  "conflicts": [],
+  "execution_trace": [
+    {
+      "timestamp": "2026-09-10T17:20:10.001785+00:00",
+      "step": "mission_received",
+      "status": "completed",
+      "details": {
+        "task_count": 1
+      }
+    },
+    {
+      "timestamp": "2026-09-10T17:20:10.001795+00:00",
+      "step": "plan_created",
+      "status": "completed",
+      "details": {
+        "tasks": [
+          {
+            "task_id": "task_ff777c1f",
+            "task_type": "vqa",
+            "image_ids": [
+              "img_79fb0cd1f4a0"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "timestamp": "2026-09-10T17:20:10.001798+00:00",
+      "step": "plan_validation",
+      "status": "completed",
+      "details": {
+        "valid": true
+      }
+    },
+    {
+      "timestamp": "2026-09-10T17:20:10.001801+00:00",
+      "step": "model_execution",
+      "status": "completed",
+      "details": {
+        "task_id": "task_ff777c1f",
+        "task_type": "vqa",
+        "model": {
+          "name": "SatQuery RS-VLM",
+          "version": "0.1.0"
+        },
+        "error": null
+      }
+    },
+    {
+      "timestamp": "2026-09-10T17:20:10.001803+00:00",
+      "step": "evidence_collection",
+      "status": "completed",
+      "details": {
+        "successful_models": 1
+      }
+    },
+    {
+      "timestamp": "2026-09-10T17:20:10.001805+00:00",
+      "step": "confidence_calculation",
+      "status": "completed",
+      "details": {
+        "models_evaluated": 1
+      }
+    },
+    {
+      "timestamp": "2026-09-10T17:20:10.001808+00:00",
+      "step": "investigation_completed",
+      "status": "completed",
+      "details": {}
+    }
+  ]
+}

@@ -2,7 +2,7 @@ import uuid
 
 from app.schemas.investigation import (
     InvestigationTask,
-    TaskType
+    TaskType,
 )
 
 
@@ -10,106 +10,117 @@ def create_task(
     task_type: TaskType,
     image_ids: list[str],
     query: str,
-    parameters: dict | None = None
+    parameters: dict | None = None,
 ):
     return InvestigationTask(
         task_id="task_" + uuid.uuid4().hex[:8],
         task_type=task_type,
         image_ids=image_ids,
         query=query,
-        parameters=parameters or {}
+        parameters=parameters or {},
     )
 
 
 def build_investigation_plan(
     query: str,
-    image_ids: list[str]
+    image_ids: list[str],
 ):
     query_lower = query.lower()
 
-    tasks = []
+    # --------------------------------------------------
+    # 1. True temporal/change analysis
+    # --------------------------------------------------
 
-    # -----------------------------
-    # Change analysis
-    # -----------------------------
+    temporal_keywords = [
+    "before and after",
+    "between the two images",
+    "compare the two images",
+    "compare these two images",
+    "compare these images",
+    "temporal change",
+    "over time",
+    "changed between",
+    "change between",
+    "new construction between",
+    ]
 
-    if any(
-        word in query_lower
-        for word in [
-            "change",
-            "changed",
-            "before and after",
-            "temporal",
-            "growth",
-            "new construction"
-        ]
+    if (
+        len(image_ids) == 2
+        and any(
+            keyword in query_lower
+            for keyword in temporal_keywords
+        )
     ):
-
-        tasks.append(
+        return [
             create_task(
                 task_type="change_analysis",
                 image_ids=image_ids,
-                query=query
+                query=query,
             )
-        )
-
-    # -----------------------------
-    # Optical + SAR
-    # -----------------------------
-
-    elif any(
-        word in query_lower
-        for word in [
-            "sar",
-            "radar",
-            "optical and sar",
-            "multimodal"
         ]
-    ):
 
-        tasks.append(
+    # --------------------------------------------------
+    # 2. Optical + SAR analysis
+    # --------------------------------------------------
+
+    multimodal_keywords = [
+        "sar",
+        "radar",
+        "optical and sar",
+        "optical + sar",
+        "multimodal",
+        "cross-modal",
+    ]
+
+    if (
+        len(image_ids) == 2
+        and any(
+            keyword in query_lower
+            for keyword in multimodal_keywords
+        )
+    ):
+        return [
             create_task(
                 task_type="optical_sar_fusion",
                 image_ids=image_ids,
-                query=query
+                query=query,
             )
-        )
-
-    # -----------------------------
-    # Grounding
-    # -----------------------------
-
-    elif any(
-        word in query_lower
-        for word in [
-            "where",
-            "locate",
-            "find",
-            "region",
-            "area"
         ]
-    ):
 
-        tasks.append(
+    # --------------------------------------------------
+    # 3. Single-image spatial/region request
+    # --------------------------------------------------
+
+    grounding_keywords = [
+        "where",
+        "locate",
+        "find",
+        "region",
+        "area",
+        "location",
+        "identify where",
+    ]
+
+    if any(
+        keyword in query_lower
+        for keyword in grounding_keywords
+    ):
+        return [
             create_task(
                 task_type="grounding",
                 image_ids=image_ids,
-                query=query
+                query=query,
             )
+        ]
+
+    # --------------------------------------------------
+    # 4. Default single-image VQA
+    # --------------------------------------------------
+
+    return [
+        create_task(
+            task_type="vqa",
+            image_ids=image_ids,
+            query=query,
         )
-
-    # -----------------------------
-    # Default VQA
-    # -----------------------------
-
-    else:
-
-        tasks.append(
-            create_task(
-                task_type="vqa",
-                image_ids=image_ids,
-                query=query
-            )
-        )
-
-    return tasks
+    ]
