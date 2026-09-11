@@ -1,12 +1,18 @@
+from typing import Any
+
 from app.schemas.investigation import InvestigationTask
 from app.services.model_registry import get_model
 from app.services.image_registry import get_image
 
 
-def get_image_paths(image_ids: list[str]) -> list[str]:
+def get_image_paths(
+    image_ids: list[str]
+) -> list[str]:
+
     image_paths = []
 
     for image_id in image_ids:
+
         image = get_image(image_id)
 
         if image is None:
@@ -23,16 +29,19 @@ def get_image_paths(image_ids: list[str]) -> list[str]:
 
 def execute_task(
     task: InvestigationTask,
-    previous_results: dict | None = None
+    previous_results: dict[str, Any] | None = None
 ):
 
     # -------------------------------------------------
     # 1. Find registered specialist model
     # -------------------------------------------------
 
-    model = get_model(task.task_type)
+    model = get_model(
+        task.task_type
+    )
 
     if model is None:
+
         return {
             "success": False,
             "task_id": task.task_id,
@@ -91,7 +100,8 @@ def execute_task(
 
             result = model.adapter.predict(
                 task=task,
-                image_paths=image_paths
+                image_paths=image_paths,
+                execution_context=execution_context
             )
 
             return {
@@ -128,18 +138,10 @@ def execute_task(
 
         try:
 
-            # Current mock handlers accept only task.
-            # The execution context is attached temporarily
-            # through task parameters for downstream use.
-
-            if execution_context:
-
-                task.parameters = {
-                    **task.parameters,
-                    "_execution_context": execution_context
-                }
-
-            result = model.handler(task)
+            result = model.handler(
+                task,
+                execution_context=execution_context
+            )
 
             return {
                 "success": True,
@@ -217,6 +219,10 @@ def execute_plan(
                 )
             )
 
+            # -------------------------------------------------
+            # Dependency does not exist
+            # -------------------------------------------------
+
             if dependency_result is None:
 
                 result = {
@@ -232,14 +238,17 @@ def execute_plan(
                 }
 
                 results.append(result)
+
                 results_by_task_id[
                     task.task_id
                 ] = result
 
                 continue
 
-            # Do not execute dependent task if
-            # its prerequisite failed.
+            # -------------------------------------------------
+            # Dependency failed
+            # -------------------------------------------------
+
             if not dependency_result["success"]:
 
                 result = {
@@ -255,11 +264,16 @@ def execute_plan(
                 }
 
                 results.append(result)
+
                 results_by_task_id[
                     task.task_id
                 ] = result
 
                 continue
+
+            # -------------------------------------------------
+            # Pass dependency result as runtime context
+            # -------------------------------------------------
 
             previous_results = {
                 dependency_id: dependency_result

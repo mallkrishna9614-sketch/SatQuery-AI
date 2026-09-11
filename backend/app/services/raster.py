@@ -352,3 +352,16 @@ def validate_aligned_pair(
                 "reason": str(exc)
             }
         )
+def needs_alignment(
+    reference_path: Path,
+    source_path: Path
+) -> bool:
+    """
+    Return True when the source raster does not match
+    the exact spatial grid of the reference raster.
+    """
+
+    return not is_same_grid(
+        reference_path=reference_path,
+        source_path=source_path
+    )

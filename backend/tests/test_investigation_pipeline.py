@@ -70,13 +70,29 @@ def test_full_temporal_pipeline(monkeypatch):
     result = run_investigation(tasks)
 
     assert len(result["model_results"]) == 1
-    assert result["model_results"][0].success is True
-    assert result["model_results"][0].task_type == "change_analysis"
+
+    assert (
+        result["model_results"][0].success
+        is True
+    )
+
+    assert (
+        result["model_results"][0].task_type
+        == "change_analysis"
+    )
+
     assert len(result["evidence"]) >= 1
     assert len(result["confidence"]) == 1
     assert result["conflicts"] == []
-    assert result["compatibility"]["compatible"] is True
+
+    assert (
+        result["compatibility"]["compatible"]
+        is True
+    )
+
     assert len(result["trace"]) >= 1
+
+
 def test_multi_step_dependency_pipeline(monkeypatch):
 
     import app.services.execution_engine as execution_engine
@@ -99,27 +115,55 @@ def test_multi_step_dependency_pipeline(monkeypatch):
         ["img_before", "img_after"]
     )
 
-    # The Mission Agent should create:
-    # 1. change_analysis
-    # 2. grounding depending on change_analysis
+    # ---------------------------------------------
+    # Verify Mission Agent plan
+    # ---------------------------------------------
+
     assert len(tasks) == 2
 
-    assert tasks[0].task_type == "change_analysis"
-    assert tasks[1].task_type == "grounding"
-
-    assert tasks[1].parameters["depends_on"] == (
-        tasks[0].task_id
+    assert (
+        tasks[0].task_type
+        == "change_analysis"
     )
+
+    assert (
+        tasks[1].task_type
+        == "grounding"
+    )
+
+    assert (
+        tasks[1].parameters["depends_on"]
+        == tasks[0].task_id
+    )
+
+    # ---------------------------------------------
+    # Execute investigation
+    # ---------------------------------------------
 
     result = run_investigation(tasks)
 
-    # Both tasks should execute successfully
-    assert len(result["model_results"]) == 2
+    # ---------------------------------------------
+    # Verify both tasks succeeded
+    # ---------------------------------------------
 
-    assert result["model_results"][0].success is True
-    assert result["model_results"][1].success is True
+    assert len(
+        result["model_results"]
+    ) == 2
 
+    assert (
+        result["model_results"][0].success
+        is True
+    )
+
+    assert (
+        result["model_results"][1].success
+        is True
+    )
+
+    # ---------------------------------------------
     # Verify execution order
+    # ---------------------------------------------
+
     assert (
         result["model_results"][0].task_type
         == "change_analysis"
@@ -130,25 +174,66 @@ def test_multi_step_dependency_pipeline(monkeypatch):
         == "grounding"
     )
 
-    # Evidence should come from both tasks
-    assert len(result["evidence"]) >= 2
+    # ---------------------------------------------
+    # Verify evidence
+    # ---------------------------------------------
 
-    # Both tasks should have confidence results
-    assert len(result["confidence"]) == 2
+    assert len(
+        result["evidence"]
+    ) >= 2
 
-    # No conflicts in the mock pipeline
+    # ---------------------------------------------
+    # Verify confidence
+    # ---------------------------------------------
+
+    assert len(
+        result["confidence"]
+    ) == 2
+
+    # ---------------------------------------------
+    # Verify conflicts
+    # ---------------------------------------------
+
     assert result["conflicts"] == []
 
-    # Dependency should appear in the execution trace
+    # ---------------------------------------------
+    # Verify dependency in execution trace
+    # ---------------------------------------------
+
     dependency_steps = [
         step
         for step in result["trace"]
-        if step["step"] == "dependency_resolution"
+        if step["step"]
+        == "dependency_resolution"
     ]
 
-    assert len(dependency_steps) == 1
+    assert len(
+        dependency_steps
+    ) == 1
 
     assert (
-        dependency_steps[0]["details"]["dependency_count"]
+        dependency_steps[0]["details"][
+            "dependency_count"
+        ]
         == 1
+    )
+
+    # ---------------------------------------------
+    # Verify Task 2 received Task 1 result
+    # ---------------------------------------------
+
+    grounding_result = (
+        result["model_results"][1].result
+    )
+
+    assert (
+        grounding_result["context_received"]
+        is True
+    )
+
+    assert (
+        tasks[0].task_id
+        in grounding_result["evidence"][0][
+            "metadata"
+        ]["upstream_tasks"]
     )

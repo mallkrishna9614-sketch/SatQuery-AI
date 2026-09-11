@@ -130,6 +130,10 @@ async def upload_image(
             status_code=500
         )
 
+    finally:
+
+        await file.close()
+
     # -------------------------------------------------
     # 5. Inspect GeoTIFF
     # -------------------------------------------------

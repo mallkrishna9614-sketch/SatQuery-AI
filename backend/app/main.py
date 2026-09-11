@@ -1,24 +1,36 @@
 from fastapi import FastAPI
-from app.api.routes_compatibility import router as compatibility_router
-from app.core.database import init_database
 from fastapi.middleware.cors import CORSMiddleware
-from app.api.routes_investigation import router as investigation_router
+
 from app.api.routes_images import router as images_router
+from app.api.routes_compatibility import router as compatibility_router
+from app.api.routes_investigation import router as investigation_router
+from app.api.routes_models import router as models_router
+
 from app.core.config import settings
-from app.core.errors import SatQueryError, satquery_error_handler
+from app.core.database import init_database
+from app.core.errors import (
+    SatQueryError,
+    satquery_error_handler
+)
 
 
 app = FastAPI(
-    
     title=settings.APP_NAME,
     version=settings.APP_VERSION
 )
+
+
+# -----------------------------
+# Database Initialization
+# -----------------------------
+
 init_database()
 
 
 # -----------------------------
 # CORS
 # -----------------------------
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -31,6 +43,7 @@ app.add_middleware(
 # -----------------------------
 # Error Handler
 # -----------------------------
+
 app.add_exception_handler(
     SatQueryError,
     satquery_error_handler
@@ -40,24 +53,35 @@ app.add_exception_handler(
 # -----------------------------
 # API Routes
 # -----------------------------
+
 app.include_router(
     images_router,
     prefix=settings.API_PREFIX
 )
+
 app.include_router(
     compatibility_router,
     prefix=settings.API_PREFIX
 )
+
 app.include_router(
     investigation_router,
     prefix=settings.API_PREFIX
 )
 
+app.include_router(
+    models_router,
+    prefix=settings.API_PREFIX
+)
+
+
 # -----------------------------
 # Health Check
 # -----------------------------
+
 @app.get("/health")
 def health_check():
+
     return {
         "status": "ok",
         "service": "satquery-backend"

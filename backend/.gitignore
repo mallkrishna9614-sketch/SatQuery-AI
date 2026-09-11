@@ -1,0 +1,56 @@
+# -----------------------------
+# Python
+# -----------------------------
+
+__pycache__/
+*.py[cod]
+*.pyo
+
+# -----------------------------
+# Virtual Environment
+# -----------------------------
+
+.venv/
+venv/
+env/
+
+# -----------------------------
+# Environment / Secrets
+# -----------------------------
+
+.env
+
+# -----------------------------
+# Testing / Coverage
+# -----------------------------
+
+.pytest_cache/
+.coverage
+htmlcov/
+
+# -----------------------------
+# IDE
+# -----------------------------
+
+.vscode/
+.idea/
+
+# -----------------------------
+# SatQuery Runtime Data
+# -----------------------------
+
+data/satquery.db
+data/uploads/*
+data/reports/*
+
+# Keep runtime directories
+# but ignore their contents.
+!data/uploads/.gitkeep
+!data/reports/.gitkeep
+
+# -----------------------------
+# OS
+# -----------------------------
+
+.DS_Store
+Thumbs.db
