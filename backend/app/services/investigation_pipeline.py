@@ -194,7 +194,31 @@ def run_investigation(tasks):
     )
 
     # -------------------------------------------------
-    # 10. Return complete investigation
+    # 10. Normalize remote change-analysis metadata
+    # -------------------------------------------------
+
+    change_analysis = None
+
+    for result in execution_results:
+        if result.get("success") and result.get("task_type") == "change_analysis":
+            raw = result.get("result") or {}
+            change_analysis = {
+                "comparison": raw.get("comparison"),
+                "reference_image": raw.get("reference_image") or raw.get("reference"),
+                "match_score": raw.get("match_score"),
+                "changed_area": raw.get("changed_area"),
+                "regions": raw.get("regions"),
+                "signal": raw.get("signal"),
+                "reproduction_id": raw.get("reproduction_id"),
+            }
+            change_analysis = {
+                key: value for key, value in change_analysis.items()
+                if value is not None
+            }
+            break
+
+    # -------------------------------------------------
+    # 11. Return complete investigation
     # -------------------------------------------------
 
     return {
@@ -205,4 +229,5 @@ def run_investigation(tasks):
         "conflicts": conflicts,
         "trace": trace,
         "compatibility": compatibility,
+        "change_analysis": change_analysis,
     }
