@@ -16,7 +16,16 @@ def validate_task(task: InvestigationTask):
 
     elif task.task_type == "change_analysis":
 
-        if len(task.image_ids) != 2:
+        remote_ml_temporal = bool(
+            (task.parameters or {}).get("remote_ml_temporal")
+        )
+
+        if remote_ml_temporal:
+            if len(task.image_ids) != 1:
+                errors.append(
+                    "Remote ML temporal analysis requires exactly one image."
+                )
+        elif len(task.image_ids) != 2:
             errors.append(
                 "Change analysis requires exactly two temporal images."
             )
