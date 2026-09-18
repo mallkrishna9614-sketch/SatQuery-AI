@@ -97,6 +97,7 @@ def build_investigation_plan(
                 task_type="change_analysis",
                 image_ids=image_ids,
                 query=query,
+                parameters={"remote_ml_temporal": True},
             )
         ]
 
