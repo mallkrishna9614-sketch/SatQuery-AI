@@ -23,13 +23,6 @@ def row_to_metadata(row):
 
 
 def bounds_overlap(bounds_a, bounds_b):
-    """
-    Check whether two bounding boxes overlap.
-
-    Bounds format:
-    [left, bottom, right, top]
-    """
-
     left_a, bottom_a, right_a, top_a = bounds_a
     left_b, bottom_b, right_b, top_b = bounds_b
 
@@ -42,12 +35,6 @@ def bounds_overlap(bounds_a, bounds_b):
 
 
 def check_resolution(rows, tolerance=0.10):
-    """
-    Check whether raster resolutions are reasonably compatible.
-
-    tolerance=0.10 means resolutions may differ by up to 10%.
-    """
-
     resolutions = []
 
     for row in rows:
@@ -63,19 +50,11 @@ def check_resolution(rows, tolerance=0.10):
     reference_x, reference_y = resolutions[0]
 
     for current_x, current_y in resolutions[1:]:
-
         if reference_x == 0 or reference_y == 0:
             continue
 
-        x_difference = (
-            abs(current_x - reference_x)
-            / reference_x
-        )
-
-        y_difference = (
-            abs(current_y - reference_y)
-            / reference_y
-        )
+        x_difference = abs(current_x - reference_x) / reference_x
+        y_difference = abs(current_y - reference_y) / reference_y
 
         if (
             x_difference > tolerance
@@ -87,11 +66,6 @@ def check_resolution(rows, tolerance=0.10):
 
 
 def check_grid_alignment(rows):
-    """
-    Check whether raster transforms use the same
-    pixel grid origin and resolution.
-    """
-
     if len(rows) < 2:
         return True
 
@@ -100,30 +74,22 @@ def check_grid_alignment(rows):
         for row in rows
     ]
 
+    # Standard PNG/JPEG images do not have an affine transform.
+    if any(
+        not isinstance(transform, list)
+        or len(transform) != 6
+        for transform in transforms
+    ):
+        return False
+
     reference = transforms[0]
 
-    # Affine transform:
-    # [a, b, c, d, e, f]
-    #
-    # a/e -> pixel size
-    # c/f -> origin
-
     for transform in transforms[1:]:
-
-        if len(transform) != 6:
-            return False
-
-        if len(reference) != 6:
-            return False
-
-        # Compare pixel size and origin
         for index in [0, 2, 4, 5]:
-
             if abs(
                 transform[index]
                 - reference[index]
             ) > 1e-9:
-
                 return False
 
     return True
@@ -150,10 +116,6 @@ def check_compatibility(
 
     connection.close()
 
-    # -----------------------------
-    # 1. Check that all images exist
-    # -----------------------------
-
     found_ids = {
         row["image_id"]
         for row in rows
@@ -166,7 +128,6 @@ def check_compatibility(
     ]
 
     if missing_ids:
-
         return {
             "compatible": False,
             "reasons": [
@@ -181,17 +142,12 @@ def check_compatibility(
 
     reasons = []
 
-    # -----------------------------
-    # 2. Check modality
-    # -----------------------------
-
     modalities = [
         row["modality"]
         for row in rows
     ]
 
     if check_type == "optical_sar":
-
         optical_count = sum(
             modality in {
                 "optical",
@@ -203,7 +159,6 @@ def check_compatibility(
         sar_count = modalities.count("sar")
 
         if optical_count != 1 or sar_count != 1:
-
             reasons.append(
                 "Optical/multispectral + SAR requires "
                 "exactly one optical or multispectral "
@@ -211,89 +166,68 @@ def check_compatibility(
             )
 
     elif check_type == "temporal":
-
         if len(rows) != 2:
-
             reasons.append(
-                "Temporal compatibility requires "
-                "exactly two images."
+                "Temporal compatibility requires exactly two images."
             )
 
         if len(set(modalities)) != 1:
-
             reasons.append(
-                "Temporal images must use the "
-                "same modality."
+                "Temporal images must use the same modality."
             )
 
-    # -----------------------------
-    # 3. Check CRS
-    # -----------------------------
-
-    crs_values = [
-        row["crs"]
+    # Geospatial compatibility only applies when every image
+    # has CRS, bounds and affine transform metadata.
+    geospatial_ready = all(
+        row["crs"] is not None
+        and len(json.loads(row["bounds"])) == 4
+        and len(json.loads(row["transform"])) == 6
         for row in rows
-    ]
+    )
 
-    if len(set(crs_values)) > 1:
-
+    if len(rows) >= 2 and not geospatial_ready:
         reasons.append(
-            "Images use different coordinate "
-            "reference systems (CRS)."
+            "CRS/spatial compatibility cannot be validated for "
+            "PNG/JPEG images; use GeoTIFFs for multi-image "
+            "geospatial fusion or alignment."
         )
 
-    # -----------------------------
-    # 4. Check spatial overlap
-    # -----------------------------
+    if geospatial_ready:
+        crs_values = [
+            row["crs"]
+            for row in rows
+        ]
 
-    if len(rows) >= 2:
+        if len(set(crs_values)) > 1:
+            reasons.append(
+                "Images use different coordinate "
+                "reference systems (CRS)."
+            )
 
-        reference_bounds = json.loads(
-            rows[0]["bounds"]
-        )
+        reference_bounds = json.loads(rows[0]["bounds"])
 
         for row in rows[1:]:
-
-            current_bounds = json.loads(
-                row["bounds"]
-            )
+            current_bounds = json.loads(row["bounds"])
 
             if not bounds_overlap(
                 reference_bounds,
                 current_bounds
             ):
-
                 reasons.append(
                     "Images do not have spatial overlap."
                 )
-
                 break
 
-    # -----------------------------
-    # 5. Check resolution
-    # -----------------------------
-
     if not check_resolution(rows):
-
         reasons.append(
-            "Image resolutions differ by more "
-            "than the allowed 10% tolerance."
+            "Image resolutions differ by more than the "
+            "allowed 10% tolerance."
         )
 
-    # -----------------------------
-    # 6. Check pixel-grid alignment
-    # -----------------------------
-
-    if not check_grid_alignment(rows):
-
+    if geospatial_ready and not check_grid_alignment(rows):
         reasons.append(
-            "Images are not aligned to the same "
-            "pixel grid."
+            "Images are not aligned to the same pixel grid."
         )
-
-    # -----------------------------
-    # 7. Check dimensions
-    # -----------------------------
 
     dimensions = {
         (row["width"], row["height"])
@@ -301,23 +235,14 @@ def check_compatibility(
     }
 
     if len(dimensions) > 1:
-
         reasons.append(
             "Images have different raster dimensions."
         )
-
-    # -----------------------------
-    # 8. Convert rows to metadata
-    # -----------------------------
 
     metadata_list = [
         row_to_metadata(row)
         for row in rows
     ]
-
-    # -----------------------------
-    # 9. Final result
-    # -----------------------------
 
     return {
         "compatible": len(reasons) == 0,
