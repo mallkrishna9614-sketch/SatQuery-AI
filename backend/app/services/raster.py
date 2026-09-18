@@ -4,15 +4,23 @@ import math
 import rasterio
 from rasterio.enums import Resampling
 from rasterio.warp import reproject
+from PIL import Image
 
 from app.core.errors import SatQueryError
 from app.schemas.image import RasterMetadata
 
 
-# Only these formats are allowed
+# Geospatial raster formats used by SatQuery.
 ALLOWED_EXTENSIONS = {
     ".tif",
     ".tiff"
+}
+
+# Standard image formats supported for VLM/public-benchmark inference.
+STANDARD_IMAGE_EXTENSIONS = {
+    ".png",
+    ".jpg",
+    ".jpeg"
 }
 
 
@@ -23,30 +31,19 @@ def inspect_raster(
     modality: str
 ) -> RasterMetadata:
 
-    # -----------------------------
-    # 1. Check file extension
-    # -----------------------------
-
     if path.suffix.lower() not in ALLOWED_EXTENSIONS:
         raise SatQueryError(
             "UNSUPPORTED_FORMAT",
-            "Only GeoTIFF/TIFF imagery is accepted.",
+            "Only GeoTIFF/TIFF imagery is accepted by the raster inspector.",
             {
                 "filename": filename,
                 "allowed": sorted(ALLOWED_EXTENSIONS)
             }
         )
 
-    # -----------------------------
-    # 2. Open raster
-    # -----------------------------
-
     try:
-
         with rasterio.open(path) as src:
-
             transform = src.transform
-
             resolution_x, resolution_y = src.res
 
             bounds = [
@@ -56,7 +53,6 @@ def inspect_raster(
                 src.bounds.top
             ]
 
-            # CRS can sometimes be missing
             crs = (
                 src.crs.to_string()
                 if src.crs
@@ -64,37 +60,25 @@ def inspect_raster(
             )
 
             return RasterMetadata(
-
                 image_id=image_id,
-
                 filename=filename,
-
                 modality=modality,
-
                 width=src.width,
-
                 height=src.height,
-
                 bands=src.count,
-
                 dtype=str(src.dtypes[0]),
-
                 crs=crs,
-
                 resolution_x=(
                     float(resolution_x)
                     if math.isfinite(resolution_x)
                     else None
                 ),
-
                 resolution_y=(
                     float(abs(resolution_y))
                     if math.isfinite(resolution_y)
                     else None
                 ),
-
                 bounds=bounds,
-
                 transform=[
                     transform.a,
                     transform.b,
@@ -103,7 +87,6 @@ def inspect_raster(
                     transform.e,
                     transform.f
                 ],
-
                 file_size_bytes=path.stat().st_size
             )
 
@@ -111,13 +94,81 @@ def inspect_raster(
         raise
 
     except Exception as exc:
-
         raise SatQueryError(
             "INVALID_RASTER",
             "The uploaded file could not be opened as a valid raster.",
+            {"reason": str(exc)}
+        )
+
+
+def inspect_standard_image(
+    image_id: str,
+    path: Path,
+    filename: str,
+    modality: str
+) -> RasterMetadata:
+    """
+    Inspect PNG/JPEG imagery used by VLMs and prescribed
+    public benchmark inputs.
+
+    Standard images do not carry the geospatial metadata
+    required for CRS/overlap/grid analysis, so those fields
+    are intentionally empty rather than fabricated.
+    """
+
+    if path.suffix.lower() not in STANDARD_IMAGE_EXTENSIONS:
+        raise SatQueryError(
+            "UNSUPPORTED_FORMAT",
+            "Only PNG/JPEG standard images are accepted here.",
             {
-                "reason": str(exc)
+                "filename": filename,
+                "allowed": sorted(STANDARD_IMAGE_EXTENSIONS)
             }
+        )
+
+    try:
+        with Image.open(path) as image:
+            image.verify()
+
+        with Image.open(path) as image:
+            width, height = image.size
+            bands = len(image.getbands())
+            dtype_by_mode = {
+                "1": "uint1",
+                "L": "uint8",
+                "LA": "uint8",
+                "P": "uint8",
+                "RGB": "uint8",
+                "RGBA": "uint8",
+                "I": "int32",
+                "F": "float32",
+                "I;16": "uint16"
+            }
+
+            return RasterMetadata(
+                image_id=image_id,
+                filename=filename,
+                modality=modality,
+                width=width,
+                height=height,
+                bands=bands,
+                dtype=dtype_by_mode.get(image.mode, image.mode),
+                crs=None,
+                resolution_x=None,
+                resolution_y=None,
+                bounds=[],
+                transform=[],
+                file_size_bytes=path.stat().st_size
+            )
+
+    except SatQueryError:
+        raise
+
+    except Exception as exc:
+        raise SatQueryError(
+            "INVALID_IMAGE",
+            "The uploaded file is not a valid readable PNG/JPEG image.",
+            {"reason": str(exc)}
         )
 
 
@@ -131,10 +182,8 @@ def is_same_grid(
 ) -> bool:
 
     try:
-
         with rasterio.open(reference_path) as reference:
             with rasterio.open(source_path) as source:
-
                 return (
                     reference.crs == source.crs
                     and reference.width == source.width
@@ -143,13 +192,10 @@ def is_same_grid(
                 )
 
     except Exception as exc:
-
         raise SatQueryError(
             "RASTER_GRID_CHECK_FAILED",
             "Unable to compare raster grids.",
-            {
-                "reason": str(exc)
-            }
+            {"reason": str(exc)}
         )
 
 
@@ -173,31 +219,19 @@ def align_to_reference(
     for temporal and optical-SAR analysis.
     """
 
-    # -----------------------------
-    # 1. Validate paths
-    # -----------------------------
-
     if not source_path.exists():
         raise SatQueryError(
             "SOURCE_RASTER_NOT_FOUND",
             "Source raster does not exist.",
-            {
-                "path": str(source_path)
-            }
+            {"path": str(source_path)}
         )
 
     if not reference_path.exists():
         raise SatQueryError(
             "REFERENCE_RASTER_NOT_FOUND",
             "Reference raster does not exist.",
-            {
-                "path": str(reference_path)
-            }
+            {"path": str(reference_path)}
         )
-
-    # -----------------------------
-    # 2. Select resampling method
-    # -----------------------------
 
     resampling_methods = {
         "nearest": Resampling.nearest,
@@ -206,53 +240,34 @@ def align_to_reference(
     }
 
     if resampling_method not in resampling_methods:
-
         raise SatQueryError(
             "INVALID_RESAMPLING_METHOD",
             "Unsupported raster resampling method.",
             {
                 "method": resampling_method,
-                "allowed": sorted(
-                    resampling_methods.keys()
-                )
+                "allowed": sorted(resampling_methods.keys())
             }
         )
 
-    resampling = resampling_methods[
-        resampling_method
-    ]
-
-    # -----------------------------
-    # 3. Open source/reference
-    # -----------------------------
+    resampling = resampling_methods[resampling_method]
 
     try:
-
         with rasterio.open(source_path) as source:
-
             with rasterio.open(reference_path) as reference:
 
-                # Both rasters need CRS information
                 if source.crs is None:
-
                     raise SatQueryError(
                         "SOURCE_CRS_MISSING",
                         "Source raster does not contain a CRS."
                     )
 
                 if reference.crs is None:
-
                     raise SatQueryError(
                         "REFERENCE_CRS_MISSING",
                         "Reference raster does not contain a CRS."
                     )
 
-                # -----------------------------
-                # 4. Build output profile
-                # -----------------------------
-
                 profile = source.profile.copy()
-
                 profile.update(
                     driver="GTiff",
                     width=reference.width,
@@ -266,10 +281,6 @@ def align_to_reference(
                     exist_ok=True
                 )
 
-                # -----------------------------
-                # 5. Reproject/resample
-                # -----------------------------
-
                 with rasterio.open(
                     output_path,
                     "w",
@@ -280,24 +291,19 @@ def align_to_reference(
                         1,
                         source.count + 1
                     ):
-
                         reproject(
                             source=rasterio.band(
                                 source,
                                 band_index
                             ),
-
                             destination=rasterio.band(
                                 destination,
                                 band_index
                             ),
-
                             src_transform=source.transform,
                             src_crs=source.crs,
-
                             dst_transform=reference.transform,
                             dst_crs=reference.crs,
-
                             resampling=resampling
                         )
 
@@ -307,17 +313,12 @@ def align_to_reference(
         raise
 
     except Exception as exc:
-
-        output_path.unlink(
-            missing_ok=True
-        )
+        output_path.unlink(missing_ok=True)
 
         raise SatQueryError(
             "RASTER_ALIGNMENT_FAILED",
             "Unable to align raster to the reference grid.",
-            {
-                "reason": str(exc)
-            }
+            {"reason": str(exc)}
         )
 
 
@@ -331,11 +332,8 @@ def validate_aligned_pair(
     """
 
     try:
-
         with rasterio.open(reference_path) as reference:
-
             with rasterio.open(aligned_path) as aligned:
-
                 return (
                     reference.crs == aligned.crs
                     and reference.width == aligned.width
@@ -344,14 +342,13 @@ def validate_aligned_pair(
                 )
 
     except Exception as exc:
-
         raise SatQueryError(
             "RASTER_ALIGNMENT_VALIDATION_FAILED",
             "Unable to validate aligned rasters.",
-            {
-                "reason": str(exc)
-            }
+            {"reason": str(exc)}
         )
+
+
 def needs_alignment(
     reference_path: Path,
     source_path: Path
