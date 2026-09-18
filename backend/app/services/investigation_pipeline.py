@@ -13,21 +13,92 @@ from app.services.compatibility import check_compatibility
 
 
 
-def build_finding(change_analysis: dict | None, query: str) -> dict | None:
+from app.services.image_registry import get_image
+
+
+def normalize_change_regions(raw_regions, image_id: str | None = None) -> list[dict]:
+    """Normalize remote ML region boxes to UI coordinates [ymin,xmin,ymax,xmax]."""
+    if not isinstance(raw_regions, list):
+        return []
+
+    width = height = 1024
+    if image_id:
+        try:
+            image = get_image(image_id) or {}
+            width = int(image.get("width") or width)
+            height = int(image.get("height") or height)
+        except Exception:
+            pass
+
+    normalized = []
+    for index, region in enumerate(raw_regions):
+        if isinstance(region, dict):
+            bbox = region.get("bbox") or region.get("bounding_box") or region.get("box") or region.get("coordinates")
+            label = region.get("label") or region.get("class") or region.get("name") or f"Changed region {index + 1}"
+            confidence = region.get("confidence")
+        else:
+            bbox = region
+            label = f"Changed region {index + 1}"
+            confidence = None
+
+        if not isinstance(bbox, (list, tuple)) or len(bbox) != 4:
+            continue
+        try:
+            a, b, c, d = [float(value) for value in bbox]
+        except (TypeError, ValueError):
+            continue
+
+        scale = max(abs(a), abs(b), abs(c), abs(d))
+        if scale <= 1.0:
+            x1, y1, x2, y2 = a, b, c, d
+        else:
+            x1, y1, x2, y2 = a / width, b / height, c / width, d / height
+
+        if x2 <= x1 or y2 <= y1:
+            # Also tolerate x,y,width,height style boxes.
+            if scale > 1.0:
+                x2 = x1 + c / width
+                y2 = y1 + d / height
+            else:
+                x2 = x1 + c
+                y2 = y1 + d
+
+        x1, x2 = max(0.0, min(1.0, x1)), max(0.0, min(1.0, x2))
+        y1, y2 = max(0.0, min(1.0, y1)), max(0.0, min(1.0, y2))
+        if x2 <= x1 or y2 <= y1:
+            continue
+
+        item = {
+            "id": str(region.get("id", index + 1)) if isinstance(region, dict) else str(index + 1),
+            "label": str(label),
+            "bbox": [y1, x1, y2, x2],
+        }
+        if isinstance(confidence, (int, float)):
+            item["confidence"] = float(confidence)
+        normalized.append(item)
+
+    return normalized
+
+
+def build_finding(change_analysis: dict | None, query: str, image_id: str | None = None) -> dict | None:
     """Create a concise, UI-safe finding from specialist output."""
     if not change_analysis:
         return None
 
     changed_area = change_analysis.get("changed_area")
-    regions = change_analysis.get("regions")
+    raw_regions = change_analysis.get("regions")
+    region_boxes = normalize_change_regions(raw_regions, image_id=image_id)
+    region_count = len(raw_regions) if isinstance(raw_regions, list) else raw_regions
     comparison = change_analysis.get("comparison")
 
     parts = []
     if comparison:
         parts.append(f"Comparison: {comparison}.")
-    if isinstance(regions, (int, float)):
-        count = int(regions) if float(regions).is_integer() else regions
+    if isinstance(region_count, (int, float)):
+        count = int(region_count) if float(region_count).is_integer() else region_count
         parts.append(f"{count} candidate changed regions identified.")
+    elif region_boxes:
+        parts.append(f"{len(region_boxes)} candidate changed regions identified.")
     if isinstance(changed_area, (int, float)):
         parts.append(f"Reported changed area: {changed_area:.2f}%.")
 
@@ -45,10 +116,12 @@ def build_finding(change_analysis: dict | None, query: str) -> dict | None:
         "summary": summary,
         "task_type": "change_analysis",
         "change_detected": bool(
-            (isinstance(regions, (int, float)) and regions > 0)
+            (isinstance(region_count, (int, float)) and region_count > 0)
+            or bool(region_boxes)
             or (isinstance(changed_area, (int, float)) and changed_area > 0)
         ),
         "change_type": change_type,
+        "regions": region_boxes,
     }
 
 def run_investigation(tasks):
@@ -258,12 +331,11 @@ def run_investigation(tasks):
             }
             break
 
+    change_task = next((task for task in tasks if task.task_type == "change_analysis"), None)
     finding = build_finding(
         change_analysis=change_analysis,
-        query=next(
-            (task.query or "" for task in tasks if task.task_type == "change_analysis"),
-            "",
-        ),
+        query=change_task.query if change_task else "",
+        image_id=change_task.image_ids[0] if change_task and change_task.image_ids else None,
     )
 
     # -------------------------------------------------
