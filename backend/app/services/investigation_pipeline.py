@@ -12,6 +12,45 @@ from app.services.execution_trace import build_execution_trace
 from app.services.compatibility import check_compatibility
 
 
+
+def build_finding(change_analysis: dict | None, query: str) -> dict | None:
+    """Create a concise, UI-safe finding from specialist output."""
+    if not change_analysis:
+        return None
+
+    changed_area = change_analysis.get("changed_area")
+    regions = change_analysis.get("regions")
+    comparison = change_analysis.get("comparison")
+
+    parts = []
+    if comparison:
+        parts.append(f"Comparison: {comparison}.")
+    if isinstance(regions, (int, float)):
+        count = int(regions) if float(regions).is_integer() else regions
+        parts.append(f"{count} candidate changed regions identified.")
+    if isinstance(changed_area, (int, float)):
+        parts.append(f"Reported changed area: {changed_area:.2f}%.")
+
+    if "built-up" in query.lower() or "built up" in query.lower():
+        summary = "Possible built-up development signal detected in the remote change analysis."
+        change_type = "Possible built-up development"
+    else:
+        summary = "Visual change signal detected by the remote change-analysis model."
+        change_type = "Visual change"
+
+    if parts:
+        summary += " " + " ".join(parts)
+
+    return {
+        "summary": summary,
+        "task_type": "change_analysis",
+        "change_detected": bool(
+            (isinstance(regions, (int, float)) and regions > 0)
+            or (isinstance(changed_area, (int, float)) and changed_area > 0)
+        ),
+        "change_type": change_type,
+    }
+
 def run_investigation(tasks):
 
     # -------------------------------------------------
@@ -104,6 +143,8 @@ def run_investigation(tasks):
             "conflicts": conflicts,
             "trace": trace,
             "compatibility": compatibility,
+            "change_analysis": None,
+            "finding": None,
         }
 
     # -------------------------------------------------
@@ -217,6 +258,14 @@ def run_investigation(tasks):
             }
             break
 
+    finding = build_finding(
+        change_analysis=change_analysis,
+        query=next(
+            (task.query or "" for task in tasks if task.task_type == "change_analysis"),
+            "",
+        ),
+    )
+
     # -------------------------------------------------
     # 11. Return complete investigation
     # -------------------------------------------------
@@ -230,4 +279,5 @@ def run_investigation(tasks):
         "trace": trace,
         "compatibility": compatibility,
         "change_analysis": change_analysis,
+        "finding": finding,
     }
