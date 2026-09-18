@@ -103,7 +103,7 @@ class RemoteMLAdapter(ModelAdapter):
                 "type": "temporal",
                 "description": (
                     "Evidence returned by remote SatQuery ML "
-                    f"change-analysis service for task {task.task_id}."
+                    f"single-image temporal analysis for task {task.task_id}."
                 ),
                 "source": "remote_ml",
                 "metadata": {
@@ -131,15 +131,14 @@ class RemoteMLAdapter(ModelAdapter):
                 "At least one image is required for remote ML inference."
             )
 
-        if len(image_paths) > 2:
+        if len(image_paths) != 1:
             raise ValueError(
-                "Remote change analysis accepts at most two images."
+                "Remote change analysis currently requires exactly one image."
             )
 
-        # The current ML API exposes one image_base64 field. Send the first
-        # GeoTIFF as-is and preserve the two-image context in metadata.
-        # If the ML service later accepts two images explicitly, only this
-        # adapter needs to change.
+        # The current ML API exposes one image_base64 field. The comparison
+        # years are supplied as metadata so the remote model can perform its
+        # own temporal analysis.
         image_base64 = self._encode_image(image_paths[0])
 
         parameters = task.parameters or {}
