@@ -15,6 +15,13 @@ class Settings(BaseSettings):
 
     CORS_ORIGINS: str = "*"
 
+    # Remote ML inference service
+    ML_BASE_URL: str = ""
+    ML_TIMEOUT_SECONDS: float = 120.0
+    ML_POLL_INTERVAL_SECONDS: float = 2.0
+    ML_DEFAULT_COMPARE_YEAR: str = "2024"
+    ML_DEFAULT_CURRENT_YEAR: str = "2026"
+
     model_config = SettingsConfigDict(
         env_file=".env",
         case_sensitive=False,
