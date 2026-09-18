@@ -36,6 +36,7 @@ class InvestigationExecution(BaseModel):
     confidence: list[ConfidenceResult] = Field(default_factory=list)
     conflicts: list[dict[str, Any]] = Field(default_factory=list)
     trace: list[dict[str, Any]] = Field(default_factory=list)
+    change_analysis: dict[str, Any] | None = None
 
 class InvestigationRequest(BaseModel):
     query: str = Field(min_length=3, max_length=2000)
