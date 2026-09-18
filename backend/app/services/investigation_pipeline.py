@@ -24,10 +24,17 @@ def run_investigation(tasks):
 
         if task.task_type == "change_analysis":
 
-            result = check_compatibility(
-                image_ids=task.image_ids,
-                check_type="temporal"
-            )
+            # The remote ML change model uses one uploaded image and
+            # internally handles the compare_year/current_year observations.
+            # Keep pairwise raster compatibility checks only for the legacy
+            # two-image temporal workflow.
+            if len(task.image_ids) == 1:
+                result = {"compatible": True, "reasons": []}
+            else:
+                result = check_compatibility(
+                    image_ids=task.image_ids,
+                    check_type="temporal"
+                )
 
             if not result["compatible"]:
                 compatibility_errors.extend(
