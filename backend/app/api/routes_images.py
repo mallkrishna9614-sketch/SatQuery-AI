@@ -2,12 +2,14 @@ import uuid
 from pathlib import Path
 
 from fastapi import APIRouter, File, Form, UploadFile
-from rasterio.errors import RasterioIOError
 
 from app.core.config import settings
 from app.core.errors import SatQueryError
 from app.schemas.image import ImageUploadResponse
-from app.services.raster import inspect_raster
+from app.services.raster import (
+    inspect_raster,
+    inspect_standard_image
+)
 from app.services.image_registry import register_image
 
 
@@ -48,13 +50,25 @@ async def upload_image(
         file.filename or ""
     ).suffix.lower()
 
-    if suffix not in {
+    allowed_extensions = {
         ".tif",
-        ".tiff"
-    }:
+        ".tiff",
+        ".png",
+        ".jpg",
+        ".jpeg"
+    }
+
+    if suffix not in allowed_extensions:
         raise SatQueryError(
             "UNSUPPORTED_FORMAT",
-            "Only GeoTIFF/TIFF files are accepted."
+            (
+                "Supported image formats are GeoTIFF/TIFF "
+                "and PNG/JPEG."
+            ),
+            {
+                "filename": file.filename,
+                "allowed": sorted(allowed_extensions)
+            }
         )
 
     # -------------------------------------------------
@@ -84,11 +98,9 @@ async def upload_image(
     )
 
     try:
-
         with target.open("wb") as output:
 
             while True:
-
                 chunk = await file.read(
                     1024 * 1024
                 )
@@ -99,7 +111,6 @@ async def upload_image(
                 size += len(chunk)
 
                 if size > max_bytes:
-
                     target.unlink(
                         missing_ok=True
                     )
@@ -118,7 +129,6 @@ async def upload_image(
         raise
 
     except OSError as exc:
-
         target.unlink(
             missing_ok=True
         )
@@ -131,47 +141,45 @@ async def upload_image(
         )
 
     finally:
-
         await file.close()
 
     # -------------------------------------------------
-    # 5. Inspect GeoTIFF
+    # 5. Inspect according to file type
     # -------------------------------------------------
 
     try:
+        if suffix in {".tif", ".tiff"}:
+            metadata = inspect_raster(
+                image_id=image_id,
+                path=target,
+                filename=file.filename or target.name,
+                modality=modality
+            )
+        else:
+            metadata = inspect_standard_image(
+                image_id=image_id,
+                path=target,
+                filename=file.filename or target.name,
+                modality=modality
+            )
 
-        metadata = inspect_raster(
-            image_id=image_id,
-            path=target,
-            filename=file.filename or target.name,
-            modality=modality
-        )
-
-    except (RasterioIOError, ValueError) as exc:
-
+    except SatQueryError:
         target.unlink(
             missing_ok=True
         )
-
-        raise SatQueryError(
-            "INVALID_RASTER",
-            "The uploaded file is not a valid readable GeoTIFF.",
-            details=str(exc)
-        )
+        raise
 
     # -------------------------------------------------
     # 6. Register image in database
     # -------------------------------------------------
 
     try:
-
         register_image(
             metadata=metadata,
             file_path=target
         )
 
     except Exception as exc:
-
         target.unlink(
             missing_ok=True
         )
