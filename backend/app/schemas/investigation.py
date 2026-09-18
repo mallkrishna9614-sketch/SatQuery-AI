@@ -43,10 +43,18 @@ class InvestigationRequest(BaseModel):
     image_ids: list[str] = Field(min_length=1, max_length=4)
 
 
+class InvestigationFinding(BaseModel):
+    summary: str
+    task_type: str
+    change_detected: bool | None = None
+    change_type: str | None = None
+
+
 class InvestigationResponse(BaseModel):
     investigation_id: str
     status: Literal["queued", "running", "completed", "failed"]
     query: str
     tasks: list[InvestigationTask]
     execution: InvestigationExecution | None = None
+    finding: InvestigationFinding | None = None
     message: str
