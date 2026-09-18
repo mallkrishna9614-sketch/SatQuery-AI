@@ -47,6 +47,13 @@ def build_investigation_plan(
                 "change between",
                 "new construction between",
                 "new construction",
+                "major changes between",
+                "changes between",
+                "between 2024 and 2026",
+                "between 2023 and 2024",
+                "between 2023 and 2025",
+                "between 2024 and 2025",
+                "between 2025 and 2026",
             ]
         )
     )
