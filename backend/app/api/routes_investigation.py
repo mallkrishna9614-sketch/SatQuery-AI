@@ -162,6 +162,7 @@ def create_investigation(
         "query": request.query,
         "tasks": tasks,
         "execution": pipeline_result,
+        "finding": pipeline_result.get("finding"),
         "message": (
             "Investigation completed successfully."
         )
