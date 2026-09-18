@@ -32,7 +32,7 @@ def build_investigation_plan(
     # -------------------------------------------------
 
     is_temporal = (
-        len(image_ids) == 2
+        len(image_ids) >= 1
         and any(
             keyword in query_lower
             for keyword in [
