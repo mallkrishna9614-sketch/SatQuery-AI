@@ -53,6 +53,12 @@ def save_investigation(
                 "trace",
                 []
             ),
+            "change_analysis": execution.get(
+                "change_analysis"
+            ),
+            "finding": execution.get(
+                "finding"
+            ),
         }
 
     connection.execute(
