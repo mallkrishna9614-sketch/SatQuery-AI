@@ -64,6 +64,8 @@ from app.services.mock_models import (
     mock_optical_sar_handler,
 )
 
+from app.services.remote_ml_adapter import RemoteMLAdapter
+
 
 # -------------------------------------------------
 # Register SatQuery specialist models
@@ -102,13 +104,21 @@ register_model(
 )
 
 
+# Use the real remote ML service for change analysis when
+# ML_BASE_URL is configured. Otherwise keep the existing mock.
+_change_adapter = None
+if __import__("app.core.config", fromlist=["settings"]).settings.ML_BASE_URL:
+    _change_adapter = RemoteMLAdapter()
+
 register_model(
     name="SatQuery Change Model",
     task_type="change_analysis",
-    version="0.1.0",
+    version="0.1.0-remote",
     description=(
-        "Bi-temporal remote-sensing change analysis model."
+        "Bi-temporal remote-sensing change analysis model "
+        "connected through the remote ML inference API."
     ),
+    adapter=_change_adapter,
     handler=mock_change_handler,
 )
 
