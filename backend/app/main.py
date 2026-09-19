@@ -5,6 +5,7 @@ from app.api.routes_images import router as images_router
 from app.api.routes_compatibility import router as compatibility_router
 from app.api.routes_investigation import router as investigation_router
 from app.api.routes_models import router as models_router
+from app.api.routes_artifacts import router as artifacts_router
 
 from app.core.config import settings
 from app.core.database import init_database
@@ -71,6 +72,11 @@ app.include_router(
 
 app.include_router(
     models_router,
+    prefix=settings.API_PREFIX
+)
+
+app.include_router(
+    artifacts_router,
     prefix=settings.API_PREFIX
 )
 
