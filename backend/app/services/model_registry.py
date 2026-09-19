@@ -107,7 +107,10 @@ register_model(
 # Use the real remote ML service for change analysis when
 # ML_BASE_URL is configured. Otherwise keep the existing mock.
 _change_adapter = None
-if __import__("app.core.config", fromlist=["settings"]).settings.ML_BASE_URL:
+if (
+    __import__("app.core.config", fromlist=["settings"]).settings.ML_BASE_URL
+    or __import__("app.core.config", fromlist=["settings"]).settings.ML_FALLBACK_BASE_URL
+):
     _change_adapter = RemoteMLAdapter()
 
 register_model(
