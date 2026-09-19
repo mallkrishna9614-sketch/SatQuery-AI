@@ -129,8 +129,16 @@ class RemoteMLAdapter(ModelAdapter):
             return {k: cls._normalize_base64_artifacts(v, k.lower()) for k, v in value.items()}
         if isinstance(value, list):
             return [cls._normalize_base64_artifacts(v, key) for v in value]
-        if isinstance(value, str) and key.lower() in base64_keys:
-            return cls._base64_to_data_url(value)
+        if isinstance(value, str):
+            normalized_key = key.lower()
+            if normalized_key in base64_keys or (
+                "base64" in normalized_key
+                and any(token in normalized_key for token in (
+                    "image", "visual", "overlay", "mask", "change", "reference",
+                    "historical", "before", "current", "artifact",
+                ))
+            ):
+                return cls._base64_to_data_url(value)
         return value
 
     @classmethod
