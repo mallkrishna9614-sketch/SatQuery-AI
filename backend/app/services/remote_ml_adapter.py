@@ -90,7 +90,7 @@ class RemoteMLAdapter(ModelAdapter):
             return value
         if value.startswith("/"):
             return f"{base_url}{value}"
-        if "/" in value and any(
+        if any(
             value.lower().endswith(ext)
             for ext in (".png", ".jpg", ".jpeg", ".webp", ".tif", ".tiff")
         ):
