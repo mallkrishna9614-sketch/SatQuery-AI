@@ -112,10 +112,20 @@ class RemoteMLAdapter(ModelAdapter):
         }
 
         if isinstance(value, dict):
-            return {
+            normalized = {
                 k: cls._normalize_artifacts(v, base_url, k.lower())
                 for k, v in value.items()
             }
+            # Provider artifact objects commonly use {url/src/href/path/uri}.
+            if key in artifact_keys:
+                for nested_key in ("url", "src", "href", "path", "uri", "image_url"):
+                    nested_value = normalized.get(nested_key)
+                    if isinstance(nested_value, str):
+                        normalized[nested_key] = cls._artifact_url(
+                            nested_value,
+                            base_url,
+                        )
+            return normalized
         if isinstance(value, list):
             return [cls._normalize_artifacts(v, base_url, key) for v in value]
         if isinstance(value, str) and key in artifact_keys:
