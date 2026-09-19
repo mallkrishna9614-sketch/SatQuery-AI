@@ -1,6 +1,8 @@
 import uuid
 
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import Response
+import httpx
 from fastapi.responses import FileResponse
 
 from app.schemas.investigation import (
@@ -25,6 +27,53 @@ router = APIRouter(
     prefix="/investigations",
     tags=["investigations"]
 )
+
+# -----------------------------------------------------
+# Proxy remote ML image artifacts
+# -----------------------------------------------------
+
+@router.get("/artifacts/{artifact_path:path}")
+def get_ml_artifact(artifact_path: str):
+    """Serve ML-generated image artifacts through the SatQuery API."""
+    base_url = (
+        settings.ML_BASE_URL.strip().rstrip("/")
+        or settings.ML_FALLBACK_BASE_URL.strip().rstrip("/")
+    )
+
+    if not base_url:
+        raise HTTPException(status_code=503, detail="Remote ML service is not configured.")
+
+    clean_path = artifact_path.lstrip("/")
+    if not clean_path:
+        raise HTTPException(status_code=400, detail="Artifact path is required.")
+
+    target_url = f"{base_url}/{clean_path}"
+
+    try:
+        with httpx.Client(timeout=30.0, follow_redirects=True) as client:
+            response = client.get(target_url)
+            response.raise_for_status()
+    except httpx.HTTPStatusError as exc:
+        raise HTTPException(
+            status_code=exc.response.status_code,
+            detail="Remote ML artifact could not be retrieved.",
+        ) from exc
+    except httpx.HTTPError as exc:
+        raise HTTPException(
+            status_code=502,
+            detail="Remote ML artifact service is unreachable.",
+        ) from exc
+
+    media_type = response.headers.get("content-type", "application/octet-stream")
+    return Response(
+        content=response.content,
+        media_type=media_type,
+        headers={
+            "Cache-Control": "public, max-age=300",
+            "Content-Disposition": "inline",
+        },
+    )
+
 
 
 @router.post(
