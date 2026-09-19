@@ -317,13 +317,45 @@ def run_investigation(tasks):
         if result.get("success") and result.get("task_type") == "change_analysis":
             raw = result.get("result") or {}
             change_analysis = {
+                # Preserve the specialist's actual change-analysis output so
+                # the frontend can render semantic region findings, overlays,
+                # evidence and explanations instead of only generic metadata.
                 "comparison": raw.get("comparison"),
                 "reference_image": raw.get("reference_image") or raw.get("reference"),
                 "match_score": raw.get("match_score"),
-                "changed_area": raw.get("changed_area"),
-                "regions": raw.get("regions"),
+                "changed_area": (
+                    raw.get("changed_area")
+                    if raw.get("changed_area") is not None
+                    else raw.get("changed_area_percent")
+                ),
+                "regions": raw.get("regions") or raw.get("changed_regions") or raw.get("detections"),
                 "signal": raw.get("signal"),
                 "reproduction_id": raw.get("reproduction_id"),
+                "change_detected": raw.get("change_detected"),
+                "change_type": raw.get("change_type"),
+                "what_changed": (
+                    raw.get("what_changed")
+                    or raw.get("change_summary")
+                    or raw.get("summary")
+                    or raw.get("answer")
+                    or raw.get("description")
+                ),
+                "why": (
+                    raw.get("why")
+                    or raw.get("explanation")
+                    or raw.get("reason")
+                    or raw.get("analysis")
+                    or raw.get("rationale")
+                ),
+                "region_findings": (
+                    raw.get("region_findings")
+                    or raw.get("region_analysis")
+                    or raw.get("semantic_findings")
+                    or raw.get("change_findings")
+                    or raw.get("findings")
+                    or raw.get("descriptions")
+                ),
+                "evidence": raw.get("evidence"),
             }
             change_analysis = {
                 key: value for key, value in change_analysis.items()
