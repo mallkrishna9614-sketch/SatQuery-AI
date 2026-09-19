@@ -16,7 +16,11 @@ class Settings(BaseSettings):
     CORS_ORIGINS: str = "*"
 
     # Remote ML inference service
+    # Primary ML endpoint. Keep this configurable for deployment.
     ML_BASE_URL: str = ""
+    # Temporary fallback for the current SIH demo tunnel. Prefer ML_BASE_URL
+    # in production because Cloudflare quick-tunnel URLs can change.
+    ML_FALLBACK_BASE_URL: str = "https://epa-writings-duo-acting.trycloudflare.com"
     ML_TIMEOUT_SECONDS: float = 120.0
     ML_POLL_INTERVAL_SECONDS: float = 2.0
     ML_DEFAULT_COMPARE_YEAR: str = "2024"
