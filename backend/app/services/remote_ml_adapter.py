@@ -92,8 +92,7 @@ class RemoteMLAdapter(ModelAdapter):
         if lower.startswith(("data:", "blob:")):
             return value
 
-        api_prefix = settings.API_PREFIX.rstrip("/")
-        proxy_prefix = f"{api_prefix}/investigations/artifacts/"
+        proxy_prefix = "/investigations/artifacts/"
 
         if lower.startswith(("http://", "https://")):
             parsed = urlparse(value)
