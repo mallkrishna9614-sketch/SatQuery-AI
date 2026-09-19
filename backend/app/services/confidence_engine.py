@@ -1,10 +1,30 @@
 def calculate_confidence(
     model_confidence: float,
-    temporal_consistency: float = 1.0,
-    spatial_consistency: float = 1.0,
-    cross_modal_agreement: float = 1.0,
-    evidence_quality: float = 1.0,
+    temporal_consistency: float | None = None,
+    spatial_consistency: float | None = None,
+    cross_modal_agreement: float | None = None,
+    evidence_quality: float | None = None,
 ) -> float:
+    """
+    Return the model confidence unless independent corroborating signals are
+    actually supplied.
+
+    Previously, omitted corroboration values defaulted to 1.0 and inflated a
+    model score such as 0.82 to 0.928. That made the UI disagree with the
+    specialist model's own confidence. We only apply the weighted evidence
+    fusion when all corroborating dimensions are explicitly available.
+    """
+    model = max(0.0, min(1.0, float(model_confidence)))
+
+    corroboration = (
+        temporal_consistency,
+        spatial_consistency,
+        cross_modal_agreement,
+        evidence_quality,
+    )
+
+    if any(value is None for value in corroboration):
+        return round(model, 4)
 
     weights = {
         "model": 0.40,
@@ -15,11 +35,11 @@ def calculate_confidence(
     }
 
     confidence = (
-        model_confidence * weights["model"]
-        + temporal_consistency * weights["temporal"]
-        + spatial_consistency * weights["spatial"]
-        + cross_modal_agreement * weights["cross_modal"]
-        + evidence_quality * weights["evidence"]
+        model * weights["model"]
+        + float(temporal_consistency) * weights["temporal"]
+        + float(spatial_consistency) * weights["spatial"]
+        + float(cross_modal_agreement) * weights["cross_modal"]
+        + float(evidence_quality) * weights["evidence"]
     )
 
     return round(max(0.0, min(1.0, confidence)), 4)
