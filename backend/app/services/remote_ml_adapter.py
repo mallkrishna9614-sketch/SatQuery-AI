@@ -1,6 +1,7 @@
 import base64
 import time
 from typing import Any
+from urllib.parse import quote, urlparse
 
 import httpx
 
@@ -80,21 +81,40 @@ class RemoteMLAdapter(ModelAdapter):
 
     @staticmethod
     def _artifact_url(value: Any, base_url: str) -> Any:
-        """Resolve ML-provider relative artifact paths to browser-loadable URLs."""
+        """Expose ML image artifacts through the SatQuery backend proxy."""
         if not isinstance(value, str):
             return value
         value = value.strip()
         if not value:
             return value
-        if value.lower().startswith(("data:", "blob:", "http://", "https://", "//")):
+
+        lower = value.lower()
+        if lower.startswith(("data:", "blob:")):
             return value
-        if value.startswith("/"):
-            return f"{base_url}{value}"
-        if any(
-            value.lower().endswith(ext)
-            for ext in (".png", ".jpg", ".jpeg", ".webp", ".tif", ".tiff")
-        ):
-            return f"{base_url}/{value.lstrip('/')}"
+
+        api_prefix = settings.API_PREFIX.rstrip("/")
+        proxy_prefix = f"{api_prefix}/investigations/artifacts/"
+
+        if lower.startswith(("http://", "https://")):
+            parsed = urlparse(value)
+            configured = urlparse(base_url)
+            if parsed.netloc == configured.netloc:
+                artifact_path = parsed.path.lstrip("/")
+                if parsed.query:
+                    artifact_path += f"?{parsed.query}"
+                return proxy_prefix + quote(artifact_path, safe="/?=&%")
+            return value
+
+        if lower.startswith("//"):
+            parsed = urlparse(f"https:{value}")
+            configured = urlparse(base_url)
+            if parsed.netloc == configured.netloc:
+                return proxy_prefix + quote(parsed.path.lstrip("/"), safe="/?=&%")
+            return value
+
+        if any(lower.endswith(ext) for ext in (".png", ".jpg", ".jpeg", ".webp", ".tif", ".tiff")):
+            return proxy_prefix + quote(value.lstrip("/"), safe="/?=&%")
+
         return value
 
     @staticmethod
