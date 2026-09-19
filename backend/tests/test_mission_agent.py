@@ -39,3 +39,13 @@ def test_optical_sar_fusion():
 
     assert len(tasks) == 1
     assert tasks[0].task_type == "optical_sar_fusion"
+
+def test_single_image_change_investigation_language():
+    tasks = build_investigation_plan(
+        "Investigate major changes and identify possible new built-up development.",
+        ["img_current"]
+    )
+
+    assert len(tasks) == 1
+    assert tasks[0].task_type == "change_analysis"
+    assert tasks[0].parameters["remote_ml_temporal"] is True
