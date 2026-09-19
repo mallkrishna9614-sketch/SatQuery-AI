@@ -77,6 +77,51 @@ class RemoteMLAdapter(ModelAdapter):
 
         return status, payload
 
+
+    @staticmethod
+    def _artifact_url(value: Any, base_url: str) -> Any:
+        """Resolve ML-provider relative artifact paths to browser-loadable URLs."""
+        if not isinstance(value, str):
+            return value
+        value = value.strip()
+        if not value:
+            return value
+        if value.lower().startswith(("data:", "blob:", "http://", "https://", "//")):
+            return value
+        if value.startswith("/"):
+            return f"{base_url}{value}"
+        if "/" in value and any(
+            value.lower().endswith(ext)
+            for ext in (".png", ".jpg", ".jpeg", ".webp", ".tif", ".tiff")
+        ):
+            return f"{base_url}/{value.lstrip('/')}"
+        return value
+
+    @classmethod
+    def _normalize_artifacts(cls, value: Any, base_url: str, key: str = "") -> Any:
+        artifact_keys = {
+            "reference_image", "reference_image_url", "reference",
+            "before_image", "before_image_url", "historical_image",
+            "historical_image_url", "current_image", "current_image_url",
+            "change_visualization", "change_visualization_url",
+            "annotated_image", "annotated_image_url", "overlay_image",
+            "overlay_image_url", "current_with_changes", "visualization",
+            "visualization_url", "artifact_url", "image_url",
+            "change_mask", "change_mask_url", "change_map", "mask_url",
+            "sar_mask", "sar_mask_url",
+        }
+
+        if isinstance(value, dict):
+            return {
+                k: cls._normalize_artifacts(v, base_url, k.lower())
+                for k, v in value.items()
+            }
+        if isinstance(value, list):
+            return [cls._normalize_artifacts(v, base_url, key) for v in value]
+        if isinstance(value, str) and key in artifact_keys:
+            return cls._artifact_url(value, base_url)
+        return value
+
     @staticmethod
     def _normalize_result(
         payload: dict,
@@ -119,6 +164,15 @@ class RemoteMLAdapter(ModelAdapter):
                 },
             }]
 
+        ml_artifact_base = (
+            self_base_url
+            if (self_base_url := getattr(settings, "ML_BASE_URL", "").strip().rstrip("/"))
+            else settings.ML_FALLBACK_BASE_URL.strip().rstrip("/")
+        )
+        normalized = RemoteMLAdapter._normalize_artifacts(
+            normalized,
+            ml_artifact_base,
+        )
         normalized["evidence"] = evidence
         normalized["remote_ml"] = True
         return normalized
