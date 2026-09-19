@@ -27,9 +27,17 @@ class RemoteMLAdapter(ModelAdapter):
         timeout_seconds: float | None = None,
         poll_interval_seconds: float | None = None,
     ):
-        self.base_url = (
+        configured_base = (
             base_url or settings.ML_BASE_URL
-        ).rstrip("/")
+        ).strip().rstrip("/")
+        fallback_base = settings.ML_FALLBACK_BASE_URL.strip().rstrip("/")
+
+        self.base_url = configured_base or fallback_base
+        self.fallback_base_url = (
+            fallback_base
+            if fallback_base and fallback_base != self.base_url
+            else None
+        )
         self.timeout_seconds = (
             timeout_seconds
             if timeout_seconds is not None
@@ -167,12 +175,28 @@ class RemoteMLAdapter(ModelAdapter):
         with httpx.Client(
             timeout=httpx.Timeout(self.timeout_seconds)
         ) as client:
-            response = client.post(
-                start_url,
-                json=request_body,
-                headers={"Accept": "application/json"},
-            )
-            response.raise_for_status()
+            try:
+                response = client.post(
+                    start_url,
+                    json=request_body,
+                    headers={"Accept": "application/json"},
+                )
+                response.raise_for_status()
+            except (httpx.ConnectError, httpx.ConnectTimeout):
+                # Cloudflare quick tunnels can change or become unreachable.
+                # Retry the current SIH demo endpoint once instead of exposing
+                # a low-level DNS error to the judge.
+                if not self.fallback_base_url:
+                    raise
+
+                self.base_url = self.fallback_base_url
+                start_url = f"{self.base_url}/api/start"
+                response = client.post(
+                    start_url,
+                    json=request_body,
+                    headers={"Accept": "application/json"},
+                )
+                response.raise_for_status()
 
             start_payload = response.json()
             job_id = start_payload.get("job_id")
