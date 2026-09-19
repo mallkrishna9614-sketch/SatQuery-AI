@@ -380,6 +380,7 @@ def run_investigation(tasks):
                 ),
                 "visualization": raw.get("visualization"),
                 "artifacts": raw.get("artifacts"),
+                "model_output": raw,
                 # Keep the provider payload available so frontend adapters can
                 # consume image/data-URI artifacts even when the ML service
                 # uses a provider-specific nested field name.
