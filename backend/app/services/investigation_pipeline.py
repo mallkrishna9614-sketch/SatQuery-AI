@@ -356,6 +356,30 @@ def run_investigation(tasks):
                     or raw.get("descriptions")
                 ),
                 "evidence": raw.get("evidence"),
+                # Preserve model-generated visual artifacts. The remote ML
+                # service may return a URL, data URI, or a nested artifact
+                # object; do not discard it before the frontend receives it.
+                "change_visualization_url": (
+                    raw.get("change_visualization_url")
+                    or raw.get("change_visualization")
+                    or raw.get("annotated_image")
+                    or raw.get("overlay_image")
+                    or raw.get("current_with_changes")
+                    or raw.get("visualization_url")
+                ),
+                "change_mask_url": (
+                    raw.get("change_mask_url")
+                    or raw.get("change_mask")
+                    or raw.get("change_map")
+                    or raw.get("mask_url")
+                ),
+                "sar_mask_url": (
+                    raw.get("sar_mask_url")
+                    or raw.get("sar_change_mask")
+                    or raw.get("sar_mask")
+                ),
+                "visualization": raw.get("visualization"),
+                "artifacts": raw.get("artifacts"),
             }
             change_analysis = {
                 key: value for key, value in change_analysis.items()
