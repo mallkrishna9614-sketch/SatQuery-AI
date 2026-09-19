@@ -97,6 +97,42 @@ class RemoteMLAdapter(ModelAdapter):
             return f"{base_url}/{value.lstrip('/')}"
         return value
 
+    @staticmethod
+    def _base64_to_data_url(value: Any, mime_type: str = "image/jpeg") -> Any:
+        """Turn a bare image base64 payload into a browser-loadable data URL."""
+        if not isinstance(value, str):
+            return value
+        stripped = value.strip()
+        if not stripped:
+            return value
+        if stripped.lower().startswith(("data:", "blob:", "http://", "https://", "//")):
+            return stripped
+        import re
+        compact = "".join(stripped.split())
+        if len(compact) < 64 or not re.fullmatch(r"[A-Za-z0-9+/=_-]+", compact):
+            return value
+        return f"data:{mime_type};base64,{compact}"
+
+    @classmethod
+    def _normalize_base64_artifacts(cls, value: Any, key: str = "") -> Any:
+        """Normalize provider base64 image fields for direct browser rendering."""
+        base64_keys = {
+            "reference_base64", "reference_image_base64",
+            "before_image_base64", "historical_image_base64",
+            "current_image_base64", "current_with_changes_base64",
+            "visualization_base64", "overlay_base64",
+            "annotated_image_base64", "change_visualization_base64",
+            "change_mask_base64", "change_map_base64",
+            "mask_base64", "sar_mask_base64",
+        }
+        if isinstance(value, dict):
+            return {k: cls._normalize_base64_artifacts(v, k.lower()) for k, v in value.items()}
+        if isinstance(value, list):
+            return [cls._normalize_base64_artifacts(v, key) for v in value]
+        if isinstance(value, str) and key.lower() in base64_keys:
+            return cls._base64_to_data_url(value)
+        return value
+
     @classmethod
     def _normalize_artifacts(cls, value: Any, base_url: str, key: str = "") -> Any:
         artifact_keys = {
@@ -183,6 +219,10 @@ class RemoteMLAdapter(ModelAdapter):
             normalized,
             ml_artifact_base,
         )
+
+        # Normalize bare base64 image artifacts returned by the ML job API.
+        # The ML UI renders these as data:image/jpeg;base64,... resources.
+        normalized = RemoteMLAdapter._normalize_base64_artifacts(normalized)
         normalized["evidence"] = evidence
         normalized["remote_ml"] = True
         return normalized
