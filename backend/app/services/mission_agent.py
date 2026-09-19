@@ -54,6 +54,19 @@ def build_investigation_plan(
                 "between 2023 and 2025",
                 "between 2024 and 2025",
                 "between 2025 and 2026",
+                "major changes",
+                "major change",
+                "detect changes",
+                "detect change",
+                "change detection",
+                "changed",
+                "development change",
+                "land-use change",
+                "land use change",
+                "built-up development",
+                "built up development",
+                "construction development",
+                "new buildings",
             ]
         )
     )
